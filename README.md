@@ -57,9 +57,4 @@ The Seam Strength & Durability Analyzer is a sophisticated quality control tool 
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
 
-### Quick Start
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/seam-analyzer.git
-cd seam-analyzer
