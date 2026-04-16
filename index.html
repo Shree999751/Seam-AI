@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Seam Analyzer | Strength & Durability Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .drop-zone {
+            transition: all 0.3s ease;
+            border: 2px dashed #cbd5e1;
+        }
+        .drop-zone.drag-over {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            transform: scale(1.01);
+        }
+        .result-card {
+            animation: slideIn 0.4s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .progress-bar {
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        .ripple:after {
+            content: "";
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+            background-repeat: no-repeat;
+            background-position: 50%;
+            transform: scale(10, 10);
+            opacity: 0;
+            transition: transform .3s, opacity .5s;
+        }
+        .ripple:active:after {
+            transform: scale(0, 0);
+            opacity: .3;
+            transition: 0s;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100">
+
+    <div id="app" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex-col flex-shrink-0 transition-transform duration-300 ease-in-out lg:translate-x-0 -translate-x-full fixed lg:relative h-full z-30 shadow-2xl">
+            <!-- Logo -->
+            <div class="flex items-center justify-center p-4 border-b border-slate-700 h-16">
+                <svg class="h-8 w-8 text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                </svg>
+                <h1 class="text-lg font-bold ml-2">Seam<span class="text-amber-400">Analyzer</span></h1>
+            </div>
+            
+            <!-- Profile -->
+            <div class="p-4 mt-2">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold border-2 border-amber-400">
+                        QC
+                    </div>
+                    <div class="ml-3">
+                        <p class="font-semibold text-sm">Quality Control</p>
+                        <p class="text-xs text-slate-400">AI Inspector Pro</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-2 py-4 space-y-1 sidebar-scrollbar overflow-y-auto">
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium bg-amber-500/20 text-amber-400 rounded-lg">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                    Analyzer
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                    </svg>
+                    Reports
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
+                    </svg>
+                    Standards
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    History
+                </a>
+                <a href="#" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.87l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.355.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.87l.214-1.281z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm">
+                <div class="flex items-center">
+                    <button id="menu-toggle" class="lg:hidden mr-4 text-slate-600">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                    <h2 class="text-xl font-bold text-slate-800 hidden sm:block">AI Seam Strength & Durability Analyzer</h2>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+                            AI Model: Active
+                        </span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6 lg:p-8">
+                <div class="grid grid-cols-12 gap-6">
+
+                    <!-- Left Column - Upload Section -->
+                    <div class="col-span-12 lg:col-span-7">
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Seam Quality Analyzer</h3>
+                            <p class="text-slate-500">Upload a seam image for AI-powered strength and durability prediction</p>
+                        </div>
+
+                        <!-- Upload Card -->
+                        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mb-6">
+                            <div class="p-6">
+                                <h4 class="font-bold text-slate-800 mb-2">Upload Seam Image</h4>
+                                <p class="text-sm text-slate-500 mb-4">Clear, well-lit photos produce the most accurate results</p>
+                                
+                                <!-- Drop Zone -->
+                                <div id="dropZone" class="drop-zone rounded-xl p-8 text-center cursor-pointer hover:bg-slate-50 transition-all">
+                                    <input type="file" id="fileInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/jpg">
+                                    <svg class="mx-auto h-12 w-12 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                    </svg>
+                                    <p class="mt-2 text-sm text-slate-600">Drag & drop or <span class="text-blue-600 font-semibold">click to browse</span></p>
+                                    <p class="text-xs text-slate-400 mt-1">Supports: JPG, PNG, WEBP (Max 10MB)</p>
+                                </div>
+
+                                <!-- Image Preview -->
+                                <div id="imagePreview" class="hidden mt-4">
+                                    <div class="relative rounded-xl overflow-hidden border border-slate-200">
+                                        <img id="previewImg" class="w-full max-h-96 object-contain bg-slate-100" alt="Preview">
+                                        <button id="removeImage" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition shadow-lg">
+                                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Analyze Button -->
+                                <button id="analyzeBtn" disabled class="w-full mt-4 bg-slate-300 text-white font-semibold py-3 rounded-xl transition-all cursor-not-allowed ripple">
+                                    <span class="flex items-center justify-center">
+                                        <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                        </svg>
+                                        Analyze Seam
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tips Card -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+                            <div class="flex items-start space-x-3">
+                                <svg class="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                                </svg>
+                                <div>
+                                    <h4 class="font-semibold text-slate-800 mb-1">Pro Tips for Best Results</h4>
+                                    <ul class="text-xs text-slate-600 space-y-1 list-disc ml-4">
+                                        <li>Ensure good lighting to highlight stitch details clearly</li>
+                                        <li>Capture seam at a 90-degree angle for accurate SPI measurement</li>
+                                        <li>Include a ruler or scale reference if possible</li>
+                                        <li>Avoid shadows that obscure stitch patterns</li>
+                                        <li>Use high-resolution images (1080x1080px recommended)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Results -->
+                    <div class="col-span-12 lg:col-span-5">
+                        <div class="space-y-6 sticky top-6">
+                            <!-- Results Card -->
+                            <div id="resultsCard" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden hidden result-card">
+                                <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-4">
+                                    <h3 class="font-bold text-white text-lg">Analysis Results</h3>
+                                    <p class="text-slate-300 text-xs">AI-powered prediction based on visual features</p>
+                                </div>
+                                
+                                <div class="p-6 space-y-5">
+                                    <!-- Strength Score -->
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-sm font-semibold text-slate-700">Strength Score</span>
+                                            <div class="flex items-center space-x-2">
+                                                <span id="strengthScore" class="text-2xl font-bold text-blue-600">0%</span>
+                                                <span id="strengthLabel" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600"></span>
+                                            </div>
+                                        </div>
+                                        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                            <div id="strengthBar" class="progress-bar bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                                        </div>
+                                        <p id="strengthDesc" class="text-xs text-slate-500 mt-1"></p>
+                                    </div>
+
+                                    <!-- Durability Score -->
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-sm font-semibold text-slate-700">Durability Score</span>
+                                            <div class="flex items-center space-x-2">
+                                                <span id="durabilityScore" class="text-2xl font-bold text-emerald-600">0%</span>
+                                                <span id="durabilityLabel" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600"></span>
+                                            </div>
+                                        </div>
+                                        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                            <div id="durabilityBar" class="progress-bar bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full" style="width: 0%"></div>
+                                        </div>
+                                        <p id="durabilityDesc" class="text-xs text-slate-500 mt-1"></p>
+                                    </div>
+
+                                    <!-- Seam Details -->
+                                    <div class="bg-slate-50 rounded-xl p-4">
+                                        <h4 class="font-semibold text-slate-700 text-sm mb-3 flex items-center">
+                                            <svg class="h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                            </svg>
+                                            Detailed Analysis
+                                        </h4>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between py-1 border-b border-slate-200">
+                                                <span class="text-slate-500">Seam Type:</span>
+                                                <span id="seamType" class="font-semibold text-slate-700">-</span>
+                                            </div>
+                                            <div class="flex justify-between py-1 border-b border-slate-200">
+                                                <span class="text-slate-500">Stitches Per Inch:</span>
+                                                <span id="spi" class="font-semibold text-slate-700">-</span>
+                                            </div>
+                                            <div class="flex justify-between py-1 border-b border-slate-200">
+                                                <span class="text-slate-500">Defects Detected:</span>
+                                                <span id="defects" class="font-semibold text-red-600">-</span>
+                                            </div>
+                                            <div class="flex justify-between py-1 border-b border-slate-200">
+                                                <span class="text-slate-500">Puckering Level:</span>
+                                                <span id="puckering" class="font-semibold text-slate-700">-</span>
+                                            </div>
+                                            <div class="flex justify-between py-1">
+                                                <span class="text-slate-500">AI Confidence:</span>
+                                                <span id="confidence" class="font-semibold text-green-600">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recommendations -->
+                                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                        <h4 class="font-semibold text-amber-800 text-sm mb-2 flex items-center">
+                                            <svg class="h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75" />
+                                            </svg>
+                                            Recommendations
+                                        </h4>
+                                        <ul id="recommendations" class="text-xs text-amber-700 space-y-1.5 ml-5 list-disc">
+                                            <li>Analysis pending...</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Placeholder -->
+                            <div id="placeholderCard" class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+                                <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-slate-700">Ready for Analysis</h4>
+                                <p class="text-sm text-slate-500 mt-2">Upload a seam image to see AI-powered strength and durability predictions</p>
+                                <div class="mt-4 flex justify-center space-x-1">
+                                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
+                                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
+                                    <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
+                                </div>
+                            </div>
+
+                            <!-- Info Card -->
+                            <div class="bg-white rounded-xl p-4 border border-slate-200">
+                                <div class="flex items-center space-x-2 text-xs text-slate-500">
+                                    <svg class="h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                                    </svg>
+                                    <span>Based on ASTM D1683 standard correlation</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+        <div id="sidebar-overlay" class="lg:hidden fixed inset-0 bg-black/50 z-20 hidden"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const removeImage = document.getElementById('removeImage');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultsCard = document.getElementById('resultsCard');
+        const placeholderCard = document.getElementById('placeholderCard');
+        
+        let currentImageFile = null;
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            toggleSidebar();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) {
+                toggleSidebar();
+            }
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleImageFile(e.target.files[0]);
+            }
+        });
+
+        removeImage.addEventListener('click', () => {
+            currentImageFile = null;
+            imagePreview.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            analyzeBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+            analyzeBtn.classList.add('bg-slate-300', 'cursor-not-allowed');
+            resultsCard.classList.add('hidden');
+            placeholderCard.classList.remove('hidden');
+            fileInput.value = '';
+        });
+
+        function handleImageFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File too large! Maximum size is 10MB.');
+                return;
+            }
+            
+            currentImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+                dropZone.classList.add('hidden');
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('bg-slate-300', 'cursor-not-allowed');
+                analyzeBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+                resultsCard.classList.add('hidden');
+                placeholderCard.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // AI Analysis
+        analyzeBtn.addEventListener('click', async () => {
+            if (!currentImageFile) return;
+
+            // Loading state
+            const originalHTML = analyzeBtn.innerHTML;
+            analyzeBtn.innerHTML = `
+                <span class="flex items-center justify-center">
+                    <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Analyzing Seam...
+                </span>
+            `;
+            analyzeBtn.disabled = true;
+
+            // Simulate AI processing
+            setTimeout(() => {
+                const mockResults = generateMockResults();
+                displayResults(mockResults);
+                
+                analyzeBtn.innerHTML = originalHTML;
+                analyzeBtn.disabled = false;
+            }, 2000);
+        });
+
+        function generateMockResults() {
+            const seamTypes = ['Plain Seam', 'Lapped Seam', 'French Seam', 'Flatlock Seam', 'Bound Seam'];
+            const defectsList = ['None', 'Minor skipped stitches (2-3)', 'Moderate skipped stitches', 'Slight puckering', 'Thread fraying', 'Edge misalignment'];
+            const puckeringLevels = ['None detected', 'Mild (Level 1)', 'Moderate (Level 2)', 'Severe (Level 3)'];
+            
+            const strengthBase = Math.floor(Math.random() * 45) + 50;
+            const durabilityBase = strengthBase - (Math.random() * 12);
+            
+            return {
+                strength: Math.min(98, Math.max(45, strengthBase)),
+                durability: Math.min(96, Math.max(42, durabilityBase)),
+                seamType: seamTypes[Math.floor(Math.random() * seamTypes.length)],
+                spi: Math.floor(Math.random() * 7) + 5,
+                defects: defectsList[Math.floor(Math.random() * defectsList.length)],
+                puckering: puckeringLevels[Math.floor(Math.random() * puckeringLevels.length)],
+                confidence: Math.floor(Math.random() * 12) + 83
+            };
+        }
+
+        function displayResults(results) {
+            // Animate scores
+            animateValue('strengthScore', 0, results.strength, 800);
+            animateValue('durabilityScore', 0, results.durability, 800);
+            
+            document.getElementById('strengthBar').style.width = `${results.strength}%`;
+            document.getElementById('durabilityBar').style.width = `${results.durability}%`;
+            
+            // Set labels
+            const strengthRating = getRatingLabel(results.strength, 'strength');
+            const durabilityRating = getRatingLabel(results.durability, 'durability');
+            document.getElementById('strengthLabel').textContent = strengthRating.label;
+            document.getElementById('strengthDesc').textContent = strengthRating.desc;
+            document.getElementById('durabilityLabel').textContent = durabilityRating.label;
+            document.getElementById('durabilityDesc').textContent = durabilityRating.desc;
+            
+            // Update details
+            document.getElementById('seamType').textContent = results.seamType;
+            document.getElementById('spi').textContent = `${results.spi} SPI (${getSPIRating(results.spi)})`;
+            document.getElementById('defects').textContent = results.defects;
+            document.getElementById('puckering').textContent = results.puckering;
+            document.getElementById('confidence').textContent = `${results.confidence}%`;
+            
+            // Recommendations
+            const recommendations = generateRecommendations(results);
+            const recList = document.getElementById('recommendations');
+            recList.innerHTML = recommendations.map(rec => `<li>${rec}</li>`).join('');
+            
+            // Show results
+            placeholderCard.classList.add('hidden');
+            resultsCard.classList.remove('hidden');
+        }
+        
+        function animateValue(elementId, start, end, duration) {
+            const element = document.getElementById(elementId);
+            const increment = (end - start) / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= end) {
+                    element.textContent = Math.round(end) + '%';
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.round(current) + '%';
+                }
+            }, 16);
+        }
+        
+        function getRatingLabel(score, type) {
+            if (score >= 85) {
+                return { label: 'Excellent', desc: 'Exceeds industry standards for most applications' };
+            } else if (score >= 70) {
+                return { label: 'Good', desc: 'Meets standard requirements for general use' };
+            } else if (score >= 55) {
+                return { label: 'Fair', desc: 'Acceptable for light-duty applications only' };
+            } else {
+                return { label: 'Poor', desc: 'Requires immediate quality improvement' };
+            }
+        }
+        
+        function getSPIRating(spi) {
+            if (spi >= 9) return 'High density';
+            if (spi >= 7) return 'Standard density';
+            if (spi >= 5) return 'Low density';
+            return 'Very low density';
+        }
+        
+        function generateRecommendations(results) {
+            const recs = [];
+            
+            if (results.strength < 70) {
+                if (results.spi < 7) {
+                    recs.push('📏 Increase stitch density to 8-10 SPI for better strength');
+                }
+                if (results.defects.includes('skipped')) {
+                    recs.push('🔧 Check thread tension and needle condition');
+                }
+                if (results.seamType === 'Plain Seam') {
+                    recs.push('💪 Consider lapped or French seam for high-stress areas');
+                }
+                recs.push('📊 Perform tensile strength test to validate visual analysis');
+            } else if (results.strength >= 85) {
+                recs.push('✅ Seam strength meets industrial standards');
+                recs.push('🎯 Maintain current production parameters');
+            } else {
+                recs.push('📈 Monitor SPI consistency across production batches');
+                recs.push('🔍 Schedule regular quality control checks');
+            }
+            
+            if (results.puckering.includes('Moderate') || results.puckering.includes('Severe')) {
+                recs.push('⚙️ Reduce thread tension or use lighter thread to minimize puckering');
+            }
+            
+            if (results.defects !== 'None') {
+                recs.push(`⚠️ Address detected: ${results.defects.toLowerCase()}`);
+            }
+            
+            if (recs.length === 0) {
+                recs.push('🏆 Excellent seam quality! Maintain current standards.');
+                recs.push('📝 Document this seam as benchmark for QC');
+            }
+            
+            return recs.slice(0, 4);
+        }
+    </script>
+</body>
+</html>
